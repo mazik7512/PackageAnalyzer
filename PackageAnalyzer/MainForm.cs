@@ -5,17 +5,17 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 
 
-
+/*
 using GMap.NET;
 using GMap.NET.MapProviders;
 using GMap.NET.WindowsForms;
 using GMap.NET.WindowsForms.Markers;
 using GMap.NET.WindowsForms.ToolTips;
+*/
 using System.Threading;
 
 namespace PackageAnalyzer
@@ -26,14 +26,18 @@ namespace PackageAnalyzer
         private byte[] showArray;
         private byte[] startArray;
         private byte[] proceseedArray;
-        private byte[,] syncArray;
+        private byte[] syncArray;
         private int counter = 0;
-        private int lStr = 1060;
+        public int lStr = 1060;
         private byte[] marker = { 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1 };
+        //private byte[] marker = { 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1 };
+        //private byte[] marker = { 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1 };
+        //private byte[] marker = { 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0 };
         private int[] character;
         private int mode = 0;
         private int xSize = 1;
         private int ySize = 1;
+        private int syncedCounter = 0;
 
         public MainForm()
         {
@@ -54,8 +58,8 @@ namespace PackageAnalyzer
                 switch (mode)
                 {
                     case 0:
-                        this.Invoke(new myInvoker(paintData));
-                        //paintData();
+                        //this.Invoke(new myInvoker(paintData));
+                        paintData();
                         break;
                     case 1:
                         this.Invoke(new myInvoker(textData));
@@ -71,10 +75,10 @@ namespace PackageAnalyzer
 
         private void paintOneLine(int line, int _i)
         {
-            
+
             for (int i = 0; i < lStr; i++)
             {
-                if (showArray[_i] == 1)
+                if (syncArray[_i] == 1)
                 {
                     bitmap.SetPixel(i, line, Color.Lime);
                 }
@@ -91,11 +95,12 @@ namespace PackageAnalyzer
         private void paintSyncedArray()
         {
             bitmap = new Bitmap(lStr, showArray.Length / lStr);
+            int c = 0;
             for (int i = 0; i < lStr; i++)
             {
                 for (int j = 0; j < showArray.Length / lStr; j++)
                 {
-                    if (syncArray[i,j] == 1)
+                    if (syncArray[c] == 1)
                     {
                         bitmap.SetPixel(i, j, Color.Lime);
                     }
@@ -103,27 +108,30 @@ namespace PackageAnalyzer
                     {
                         bitmap.SetPixel(i, j, Color.Black);
                     }
+                    c++;
                 }
             }
             pictureBox1.Image = bitmap;
         }
 
 
-        private void writeOneLine(int _i, int _j)
+        private void writeOneLine(int _i)
         {
             for (int i = 0; i < lStr; i++)
             {
-                syncArray[i, _j] = showArray[_i];
+                syncArray[syncedCounter] = showArray[_i];
+                syncedCounter++;
+                _i++;
             }
         }
 
         private void paintData()
         {
-            bitmap = new Bitmap(lStr, (showArray.Length) / (lStr));
+
             
-
+            bitmap = new Bitmap(lStr, (showArray.Length) / (lStr));
             int bitCounter = 0;
-
+            
             for (int i = 0; i < bitmap.Height; i++)
             {
                 for (int j = 0; j < lStr; j++)
@@ -139,24 +147,22 @@ namespace PackageAnalyzer
                             bitmap.SetPixel(j, i, Color.Black);
                         }
                             bitCounter++;
-                        
+
                     }
                     else
                     {
-                        return;
+                       return;
                     }
                     
                 }
             }
-            
+ 
             pictureBox1.Image = bitmap;
-      
         }
 
         private void textData()
         {
-            
-            Font font = new Font("Segoe UI", 5, FontStyle.Bold);
+            Font font = new Font("Segoe UI", 10, FontStyle.Bold);
             Brush greenBrush = new SolidBrush(Color.Green);
             Brush blackBrush = new SolidBrush(Color.Black);
             int bitCounter = 0;
@@ -164,27 +170,24 @@ namespace PackageAnalyzer
             Graphics graphics = Graphics.FromImage(bitmap);
             for (int i = 0; i < bitmap.Height; i++)
             {
-                for (int j = 0; j < bitmap.Width; j++)
+                for (int j = 0; j < lStr; j++)
                 {
                     if (bitCounter < showArray.Length)
                     {
                         if (showArray[bitCounter] == 1)
                         {
-                            graphics.DrawString("1", font, greenBrush, j, i);
+                            graphics.DrawString("1", font, greenBrush, j * 2, i * 2);
                         }
                         else
                         {
-                            graphics.DrawString("0", font, blackBrush, j, i);
-                            
+                            graphics.DrawString("0", font, blackBrush, j * 2, i * 2);
                         }
-
                         bitCounter++;
                     }
                     else
                     {
                         return;
                     }
-
                 }
             }
             pictureBox1.Image = bitmap;
@@ -230,22 +233,25 @@ namespace PackageAnalyzer
         }
 
 
-        private void readFile(Stream fileStream)
+        private void readFile(Object _fileStream)
         {
             int c = 0;
             int temp;
             //BinaryReader reader = new BinaryReader(fileStream);
             startArray = new byte[showArray.Length];
+            counter = 0;
+            FileStream fileStream = (FileStream)_fileStream;
             for (int i = 0; i < fileStream.Length; i++)
             {
                 temp = fileStream.ReadByte();
+                
                 for (int j = 0; j < 8; j++)
                 {
                     showArray[counter] = Convert.ToByte((temp >> j) & 0x01);
-                    if (counter + 1 == showArray.Length - 1)
-                    {
-                        break;
-                    }
+                    //if (counter == showArray.Length - 1)
+                    //{
+                     //   break;
+                    //}
                     counter++;
                     
                 }
@@ -261,11 +267,8 @@ namespace PackageAnalyzer
 
         private void бинарныйРежимToolStripMenuItem_Click(object sender, EventArgs Exception)
         {
-            
             OpenFileDialog ofd = new OpenFileDialog();
-            
             ofd.Filter = "Бинарные данные(*.bin)|*.bin|Все файлы|*.*";
-           
             if (ofd.ShowDialog() == DialogResult.Cancel)
             {
                 return;
@@ -274,16 +277,35 @@ namespace PackageAnalyzer
             {
                 
                 showArray = new byte[new FileInfo(ofd.FileName).Length * 8];
-                //pictureBox1.Width = 1060;
-                //pictureBox1.Height = showArray.Length / 1060;
-                //toolStripProgressBar1.Maximum = (showArray.Length - 1);
                 //Task.Run(() => readFile(ofd.OpenFile()));
                 readFile(ofd.OpenFile());
-       
             }
             ofd.Dispose();
+            NMEAPackage nMEA = new NMEAPackage();
+            nMEA.SetData(showArray);
+            IPHeaderVersionTextBox.Text = nMEA.IpVersionNumber.ToString();
+            IPHeaderLengthTextBox.Text = nMEA.IpHeaderLength.ToString();
+            IPHeaderTosTextBox.Text = nMEA.IpTOS.ToString();
+            IPHeaderTotalLengthTextBox.Text = nMEA.IpTotalLength.ToString();
+            IPHeaderIDTextBox.Text = nMEA.IpPackageID.ToString();
+            IPHeaderFlagsListBox.SetItemChecked(0, nMEA.IpDfFlag);
+            IPHeaderFlagsListBox.SetItemChecked(1, nMEA.IpMfFlag);
+            IPHeaderFragmentOffsetTextBox.Text = nMEA.IpFragmentOffset.ToString();
+            IPHeaderTtlTextBox.Text = nMEA.IpTTL.ToString();
+            IPHeaderProtocolTextBox.Text = (nMEA.IpProtocol == 17) ? "UDP" : (nMEA.IpProtocol == 6) ? "TCP" : "";
+            IPHeaderCheckSumTextBox.Text = nMEA.IpCheckSum;
+            IPHeaderSourceIPTextBox.Text = nMEA.IpSource;
+            IPHeaderDestinationIPTextBox.Text = nMEA.IpDestination;
+            UDPHeaderSourcePortTextBox.Text = nMEA.UdpSourcePort.ToString();
+            UDPHeaderDestinationPortTextBox.Text = nMEA.UdpDestinationPort.ToString();
+            UDPHeaderLengthTextBox.Text = nMEA.UdpLength.ToString();
+            UDPHeaderCheckSumTextBox.Text = nMEA.UdpCheckSum;
+            DATABlockCallSign.Text = nMEA.DataCallSign;
+            NMEAIDTextBox.Text = nMEA.NmeaId;
+            NMEALatitudeTextBox.Text = nMEA.Latitude.ToString();
             //ofd.OpenFile().Close();
-            
+
+
         }
 
         private void pcapрежимToolStripMenuItem_Click(object sender, EventArgs e)
@@ -298,14 +320,14 @@ namespace PackageAnalyzer
                 графическийРежимToolStripMenuItem.Image = Resources.GraphMode;
                 графическийРежимToolStripMenuItem.Text = "Графический режим";
                 mode = 0;
-                pictureBox1.Invalidate();
+                chooseMode(mode);
             }
             else
             {
                 графическийРежимToolStripMenuItem.Image = Resources.TextMode;
                 графическийРежимToolStripMenuItem.Text = "Текстовый режим";
                 mode = 1;
-                pictureBox1.Invalidate();
+                chooseMode(mode);
             }
         }
 
@@ -337,10 +359,12 @@ namespace PackageAnalyzer
         private void кадроваяСинхронизацияToolStripMenuItem_Click(object sender, EventArgs e)
         {
             lStr = 800;
+            syncedCounter = 0;
+           
             bitmap = new Bitmap(lStr, (showArray.Length) / (lStr));
-            syncArray = new byte[lStr, showArray.Length / lStr];
-            int line = 0;
-            for (int i = 0; i < showArray.Length - (marker.Length); i++)
+            syncArray = new byte[showArray.Length];
+       
+            for (int i = 0; i < showArray.Length - lStr; i++)
             {
                 if (showArray[i] == marker[0])
                 {
@@ -352,16 +376,14 @@ namespace PackageAnalyzer
                         }
                         else if (j == marker.Length - 1 && showArray[i + j] == marker[j])
                         {
-                            //writeOneLine(i + j + 1, line);
-                            paintOneLine(line, i + j + 1);
-                            line++;
-                            i += marker.Length;
+                            writeOneLine(i + j + 1);
+                            i += lStr + marker.Length - 1;
                         }
                     }
                 }
             }
-            //paintSyncedArray();
-            pictureBox1.Invalidate();
+            showArray = syncArray;
+            chooseMode(mode);
         }
 
         private void сбросToolStripMenuItem_Click(object sender, EventArgs e)
@@ -440,55 +462,186 @@ namespace PackageAnalyzer
             toolStripStatusLabel2.Text = String.Format("{0}x{1}", xSize, ySize);
         }
 
-        private void перевестиВТекстToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            character = new int[showArray.Length / 8];
-            //ВРОДЕ КАК РАБОТАЕТ ПОПРОБОВАТЬ ВЫВЕСТИ В ФАЙЛ
-            int c = 0;
-            string bits = "";
-            string res = "";
-            byte[] bytes = new byte[showArray.Length / 8];
-            int k = 0;
 
-            for (int i = 0; i < showArray.Length / 8; i++)
+        private void обработка9ст7ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            int c = 0;
+            proceseedArray = new byte[showArray.Length];
+            for (int i = 0; i < showArray.Length - 8; i++)
             {
-                bits = "";
-                for (int j = 0; j < 8; j++)
+
+                if (showArray[i] == 0 && showArray[i + 8] == 1)
                 {
-                    bits += showArray[k];
-                    k++;
+                    for (int j = i + 1; j < i + 8; j++)
+                    {
+                        proceseedArray[c] = showArray[j];
+                        c++;
+
+                    }
+                    i += 8;
                 }
-                //bytes[c] = Convert.ToByte(bits, 2);
-                res += Convert.ToString(Convert.ToByte(bits, 2));
-                c++;
-                
             }
-            textBox1.Text = res;
-            //Console.WriteLine(c);
-            //textBox1.Text += Encoding.ASCII.GetString(character);//Encoding.ASCII.GetString(character);
-            tabControl.SelectedIndex = tabControl.TabPages.IndexOf(ASCIIText);
+            showArray = proceseedArray;
+            lStr = 816;
+            chooseMode(mode);
         }
 
-        private void сохранитьТекстКакToolStripMenuItem_Click(object sender, EventArgs e)
+        private void обработка11ст8ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = "Текстовый файл(*.txt)|*.txt|Все файлы|*.*";
-            sfd.FileName = "save.txt";
+            int c = 0;
+            proceseedArray = new byte[showArray.Length];
+            for (int i = 0; i < showArray.Length - 10; i++)
+            {
+
+                if (showArray[i] == 0 && showArray[i + 9] == 1 && showArray[i + 10] == 1)
+                {
+                    for (int j = i + 1; j < i + 9; j++)
+                    {
+                        proceseedArray[c] = showArray[j];
+                        c++;
+
+                    }
+                    i += 10;
+                }
+            }
+            showArray = proceseedArray;
+            lStr = 816;
+            chooseMode(mode);
+        }
+
+        private void сохранитьПотокКакToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            byte temp = 0;
+            StringBuilder bits = new StringBuilder();
             
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Filter = "Бинарные данные(*.bin)|*.bin|Все файлы|*.*";
+            sfd.FileName = String.Format("BinaryData_{0}_period.bin", lStr);
             if (sfd.ShowDialog() == DialogResult.Cancel)
             {
                 return;
             }
             else
             {
-                StreamWriter streamWriter = new StreamWriter(sfd.FileName, false, Encoding.ASCII);
-                for (int i = 0; i < character.Length; i++)
+                StreamWriter writer = new StreamWriter(sfd.FileName, false, Encoding.GetEncoding(1252));
+                for (int i = 0; i < showArray.Length; i++)
                 {
-                    streamWriter.Write(character[i]);
-                    streamWriter.Write(" ");
+                    
+                    temp = Convert.ToByte(showArray[i + 7] << 7);
+                    bits.Clear();
+                    
+                    for (int j = 6; j >= 0; j--)
+                    {
+                        //bits.Append(showArray[i + j]);
+                        temp |= Convert.ToByte(showArray[i + j] << j);
+                    }
+                    //writer.Write(Convert.ToChar(Convert.ToByte(bits.ToString().PadLeft(8,'0'), 2)));
+                    writer.Write(Convert.ToChar(temp));
+                    i+=7;
                 }
-                streamWriter.Close();
+                writer.Close();
             }
+        }
+
+        private void периодСтрокиToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            unsafe
+            {
+                fixed (int* _lStr = &lStr)
+                {
+                    PeriodForm form = new PeriodForm(_lStr);
+                    form.ShowDialog();
+                }
+                chooseMode(mode);
+            }
+        }
+
+        private void перевестиВТекстИСохранитьToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (showArray.Length > 0)
+            {
+                SaveFileDialog sfd = new SaveFileDialog();
+                sfd.Filter = "Текстовые файлы(*.txt)|*.txt|RedSun-файлы|*.redsun|Все файлы|*.*";
+                sfd.FileName = "TextData.txt";
+                if (sfd.ShowDialog() == DialogResult.Cancel)
+                {
+                    return;
+                }
+                else
+                {
+                    byte[] asciiBytes = new byte[showArray.Length / 8];
+                    int c = 0;
+                    byte temp = 0;
+                    int codePage = 1252;
+                    StringBuilder bits = new StringBuilder();
+                    StreamWriter writer = new StreamWriter(sfd.FileName, false, Encoding.GetEncoding("Windows-1252"));
+
+                    int k = 0;
+
+                    for (int i = 0; i < showArray.Length; i++)
+                    {
+                        //temp = Convert.ToByte(showArray[i] << 0);
+                        if (k > 151 && k < 791)
+                        {
+                            bits.Clear();
+                            temp = Convert.ToByte(showArray[i + 7] << 7);
+                            for (int j = 6; j >= 0; j--)
+                            {
+                                //bits.Append(showArray[i + j]);
+                                temp = Convert.ToByte(showArray[i + j] << j);
+                            }
+                            //writer.Write(Convert.ToChar(Convert.ToByte(bits.ToString().PadLeft(8, '0'), 2)));
+                            writer.Write(Convert.ToChar(temp));
+                            i += 7;
+                        }
+                        if (k == 799)
+                        {
+                            k = 0;
+                        }
+                        k++;
+                        
+                    }
+                    /*
+                    for (int i = 0; i < showArray.Length - 8; i++)
+                    {
+                        bits.Clear();
+                        for (int j = 0; j < 8; j++)
+                        {
+                            bits.Append(showArray[k]);
+                            //if (showArray[k] == 1)
+                            //{
+                                //asciiBytes[i] |= Convert.ToByte(Math.Pow(2, j));
+                                //asciiBytes[i] |= Convert.ToByte(showArray[k] << j);
+                            //}
+                            k++;
+                        }
+                        //Console.WriteLine(asciiBytes[c]);
+                        //bytes[c] = Convert.ToByte(bits, 2);
+                        //res.Append(bits.ToString());
+                        //writer.Write(Convert.ToChar(Convert.ToByte(bits.ToString(), 2)));
+                        //asciiBytes[c] = Convert.ToByte(bits.ToString(), 2);
+                        //writer.Write(asciiBytes[i]);
+                        //writer.Write(" ");
+                        //c++;
+
+                    }
+                    writer.Write(Encoding.GetEncoding(codePage).GetString(asciiBytes));
+                    */
+                    writer.Close();
+                    //textBox1.Text = res.ToString();
+                    //Console.WriteLine(c);
+                }
+                
+            }
+
+        }
+
+
+        private void оПрограммеToolStripMenuItem_Click_1(object sender, EventArgs e)
+        {
+            About about = new About();
+            about.ShowInTaskbar = false;
+            about.ShowDialog();
         }
     }
 }
